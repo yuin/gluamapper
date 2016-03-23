@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"encoding/json"
 )
 
 func errorIfNotEqual(t *testing.T, v1, v2 interface{}) {
@@ -136,4 +137,49 @@ func TestError(t *testing.T) {
 	if err.Error() != "arguments #1 must be a table, but got an array" {
 		t.Error("invalid error message")
 	}
+}
+
+func TestMapConvertedToJSON(t *testing.T) {
+	L := lua.NewState()
+	if err := L.DoString(`
+    person = {
+      name = "Michel",
+      age  = "31", -- weakly input
+      work_place = "San Jose",
+      role = {
+        {
+          name = "Administrator"
+        },
+        {
+          name = "Operator"
+        }
+      }
+    }
+	`); err != nil {
+		t.Error(err)
+	}
+	var person map[string]interface{}
+	if err := Map(L.GetGlobal("person").(*lua.LTable), &person); err != nil {
+		t.Error(err)
+	}
+
+	b, err := json.MarshalIndent(person, "", "  ")
+	if err != nil {
+		t.Errorf("could not parse to json from a lua table: %v", err)
+	}
+
+	errorIfNotEqual(t, `{
+  "Age": "31",
+  "Name": "Michel",
+  "Role": [
+    {
+      "Name": "Administrator"
+    },
+    {
+      "Name": "Operator"
+    }
+  ],
+  "WorkPlace": "San Jose"
+}`, string(b))
+
 }
