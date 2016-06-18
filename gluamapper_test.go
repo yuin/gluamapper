@@ -1,10 +1,12 @@
 package gluamapper
 
 import (
-	"github.com/yuin/gopher-lua"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/mitchellh/mapstructure"
+	"github.com/yuin/gopher-lua"
 )
 
 func errorIfNotEqual(t *testing.T, v1, v2 interface{}) {
@@ -136,4 +138,41 @@ func TestError(t *testing.T) {
 	if err.Error() != "arguments #1 must be a table, but got an array" {
 		t.Error("invalid error message")
 	}
+}
+
+func TestUnused(t *testing.T) {
+	L := lua.NewState()
+	defer L.Close()
+	if err := L.DoString(`
+    person = {
+      name = "Michel",
+      age  = "31", -- weakly input
+      work_place = "San Jose",
+      role = {
+        {
+          name = "Administrator"
+        },
+        {
+          name = "Operator"
+        }
+      },
+      foo = "unused key foo",
+      bar = "unused key bar"
+    }
+	`); err != nil {
+		t.Error(err)
+	}
+	var person testPerson
+
+	var metadata mapstructure.Metadata
+	opts := Option{
+		Metadata: &metadata,
+	}
+	mapper := NewMapper(opts)
+	if err := mapper.Map(L.GetGlobal("person").(*lua.LTable), &person); err != nil {
+		t.Error(err)
+	}
+
+	errorIfNotEqual(t, "Foo", metadata.Unused[0])
+	errorIfNotEqual(t, "Bar", metadata.Unused[1])
 }
