@@ -92,7 +92,7 @@ func ToGoValue(lv lua.LValue, opt Option) interface{} {
 			ret := make(map[interface{}]interface{})
 			v.ForEach(func(key, value lua.LValue) {
 				keystr := fmt.Sprint(ToGoValue(key, opt))
-				ret[opt.NameFunc(keystr)] = ToGoValue(value, opt)
+				ret[keystr] = ToGoValue(value, opt)
 			})
 			return ret
 		} else { // array
